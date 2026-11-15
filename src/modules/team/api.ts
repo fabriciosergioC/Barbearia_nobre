@@ -40,27 +40,60 @@ export interface InviteMemberPayload {
 }
 
 export async function inviteMember(payload: InviteMemberPayload): Promise<void> {
-  const { data, error } = await supabase().functions.invoke('team-invite', {
-    body: {
-      full_name: payload.fullName,
-      email: payload.email,
-      role: payload.role,
-    },
-  })
+  const client = supabase()
+
+  const send = () =>
+    client.functions.invoke('team-invite', {
+      body: {
+        full_name: payload.fullName,
+        email: payload.email,
+        role: payload.role,
+      },
+    })
+
+  let { data, error } = await send()
+  let status = 0
+  let serverMessage: string | null = null
 
   if (error) {
-    let serverMessage: string | null = null
     const response = (error as { context?: unknown }).context
 
     if (response instanceof Response) {
+      status = response.status
       try {
-        const body = (await response.json()) as { error?: string }
+        const body = (await response.clone().json()) as { error?: string }
         serverMessage = body?.error ?? null
       } catch {
         serverMessage = null
       }
     }
+  }
 
+  // Token expirado: renova a sessão e tenta uma vez mais.
+  if (error && status === 401) {
+    const { data: refreshed } = await client.auth.refreshSession()
+    if (!refreshed.session) {
+      await client.auth.signOut()
+      throw new Error('Sua sessão expirou. Entre novamente.')
+    }
+
+    ;({ data, error } = await send())
+    serverMessage = null
+
+    if (error) {
+      const response = (error as { context?: unknown }).context
+      if (response instanceof Response) {
+        try {
+          const body = (await response.json()) as { error?: string }
+          serverMessage = body?.error ?? null
+        } catch {
+          serverMessage = null
+        }
+      }
+    }
+  }
+
+  if (error) {
     throw new Error(serverMessage ?? error.message)
   }
 

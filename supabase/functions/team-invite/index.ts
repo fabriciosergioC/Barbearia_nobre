@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
 
   const authHeader = req.headers.get('Authorization')
   if (!authHeader?.startsWith('Bearer ')) {
-    return json({ error: 'Sessão inválida. Entre novamente.' }, 401, origin)
+    return json({ error: 'Sessão ausente. Entre novamente.' }, 401, origin)
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
@@ -56,13 +56,19 @@ Deno.serve(async (req) => {
 
   const accessToken = authHeader.slice('Bearer '.length).trim()
 
+  // A chave pública também chega como "Bearer" quando não há sessão.
+  if (accessToken === anonKey) {
+    return json({ error: 'Sessão ausente. Entre novamente.' }, 401, origin)
+  }
+
   const {
     data: { user },
     error: authError,
   } = await callerClient.auth.getUser(accessToken)
 
   if (authError || !user) {
-    return json({ error: 'Sessão inválida. Entre novamente.' }, 401, origin)
+    console.error('[team-invite] auth error', authError?.name, authError?.message)
+    return json({ error: 'Sessão expirada. Entre novamente.' }, 401, origin)
   }
 
   const { data: allowed, error: permissionError } = await callerClient.rpc('has_permission', {
@@ -139,7 +145,7 @@ Deno.serve(async (req) => {
     const code = invite.error?.code ?? ''
     if (/already|registered|exists/i.test(message)) {
       return json(
-        { error: 'Este e-mail já possui uma conta no sistema. Cada usuário acessa um único estabelecimento.' },
+        { error: 'Este e-mail já possui uma conta no sistema. Entre com ela ou use outro e-mail.' },
         409,
         origin,
       )
