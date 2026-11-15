@@ -1,0 +1,8 @@
+-- ============================================================================
+-- Nobre · seed de desenvolvimento (opcional)
+-- ============================================================================
+-- A matriz de permissões é aplicada por migration e não depende deste arquivo.
+-- Para criar o primeiro estabelecimento, use a tela de onboarding após o login.
+--
+-- Observação: não insira usuários diretamente em auth.users por aqui.
+-- Utilize o fluxo de cadastro da aplicação ou a função team-invite.
