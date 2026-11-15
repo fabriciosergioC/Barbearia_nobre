@@ -54,10 +54,12 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   })
 
+  const accessToken = authHeader.slice('Bearer '.length).trim()
+
   const {
     data: { user },
     error: authError,
-  } = await callerClient.auth.getUser()
+  } = await callerClient.auth.getUser(accessToken)
 
   if (authError || !user) {
     return json({ error: 'Sessão inválida. Entre novamente.' }, 401, origin)
@@ -134,6 +136,7 @@ Deno.serve(async (req) => {
 
   if (invite.error || !invite.data.user) {
     const message = invite.error?.message ?? ''
+    const code = invite.error?.code ?? ''
     if (/already|registered|exists/i.test(message)) {
       return json(
         { error: 'Este e-mail já possui uma conta no sistema. Cada usuário acessa um único estabelecimento.' },
@@ -141,7 +144,13 @@ Deno.serve(async (req) => {
         origin,
       )
     }
-    console.error('[team-invite] invite error', message)
+    if (code === 'email_address_invalid' || /invalid|not valid|not deliverable/i.test(message)) {
+      return json({ error: 'E-mail inválido ou não entregável. Use um endereço real.' }, 422, origin)
+    }
+    if (/rate limit|too many|exceeded/i.test(message)) {
+      return json({ error: 'Limite de envios atingido. Aguarde alguns minutos e tente novamente.' }, 429, origin)
+    }
+    console.error('[team-invite] invite error', code, message)
     return json({ error: 'Não foi possível enviar o convite. Tente novamente.' }, 502, origin)
   }
 

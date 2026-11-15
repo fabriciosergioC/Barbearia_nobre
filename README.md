@@ -70,6 +70,17 @@ npm run dev
 
 No primeiro acesso, crie a conta e conclua o onboarding: nome da barbearia, identificador, seu nome e telefone. Isso cria o estabelecimento e o primeiro administrador.
 
+## Publicação
+
+Produção atual: https://nobre-gestao.netlify.app (Netlify, deploy manual do `dist`).
+
+```bash
+npm run build
+npx netlify deploy --prod --dir=dist
+```
+
+Links de convite e recuperação usam `VITE_APP_URL` no build e o secret `APP_URL` na Edge Function — ambos devem apontar para o domínio publicado. Após trocar o domínio, rode `npx supabase config push` e `npx supabase secrets set APP_URL=<url>`.
+
 ## Scripts
 
 | Script | Descrição |
